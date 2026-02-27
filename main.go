@@ -4,11 +4,17 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"time"
+
+	"github.com/AvelarJ/pokedexcli/internal"
 )
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-	config := &config{} //Start with empty config, will be updated by commands that need it
+	config := &config{
+		cache: internal.NewCache(5 * 60 * time.Second), // Cache with a 5-minute expiration interval
+	} //Start with empty config, will be updated by commands that need it
+
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()

@@ -19,6 +19,7 @@ type cliCommand struct {
 type config struct {
 	Next     *string
 	Previous *string
+	cache    *internal.Cache
 }
 
 var availableCommands map[string]cliCommand
@@ -92,7 +93,7 @@ func commandMap(config *config) error {
 		apiURL = *config.Previous
 	}
 
-	locationArea, err := internal.FetchLocationAreas(apiURL)
+	locationArea, err := config.cache.FetchLocationAreas(apiURL)
 	if err != nil {
 		return fmt.Errorf("error fetching location areas: %v", err)
 	}
@@ -117,7 +118,7 @@ func commandMapb(config *config) error {
 
 	apiURL := *config.Previous
 
-	locationArea, err := internal.FetchLocationAreas(apiURL)
+	locationArea, err := config.cache.FetchLocationAreas(apiURL)
 	if err != nil {
 		return fmt.Errorf("error fetching location areas: %v", err)
 	}
