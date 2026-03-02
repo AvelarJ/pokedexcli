@@ -22,10 +22,19 @@ func main() {
 		cleanInput := cleanInput(input)
 		command := cleanInput[0]
 
+		// Additional parameters for commands that require them, otherwise an empty slice
+		var parameters []string
+		if len(cleanInput) > 1 {
+			parameters = cleanInput[1:]
+			//fmt.Println("Parameters passed to command:", parameters)
+		} else {
+			parameters = []string{}
+		}
+
 		// Check if the command exists in the availableCommands map
 		if commandFunc, exists := availableCommands[command]; exists {
 
-			err := commandFunc.callback(config)
+			err := commandFunc.callback(config, parameters)
 			if err != nil {
 				fmt.Println(err)
 			}

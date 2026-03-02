@@ -14,7 +14,7 @@ func TestAvailableCommands(t *testing.T) {
 		old := os.Stdout
 		os.Stdout = w
 
-		commandHelp(&config{})
+		commandHelp(&config{}, nil)
 
 		w.Close()
 		os.Stdout = old
@@ -38,7 +38,7 @@ func TestAvailableCommands(t *testing.T) {
 	t.Run("exit", func(t *testing.T) {
 		// commandExit calls os.Exit, so run it in a subprocess.
 		if os.Getenv("TEST_COMMAND_EXIT") == "1" {
-			commandExit(&config{})
+			commandExit(&config{}, nil)
 			return
 		}
 		cmd := exec.Command(os.Args[0], "-test.run=TestAvailableCommands/exit")

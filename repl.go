@@ -12,7 +12,7 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, []string) error
 }
 
 // Config struct
@@ -47,6 +47,11 @@ func init() {
 			description: "Display the previous 20 location areas in the pokemon world",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Explore a location area by name, showing the pokemon that can be found there",
+			callback:    commandExplore,
+		},
 	}
 }
 
@@ -64,13 +69,13 @@ func cleanInput(text string) []string {
 
 // Command functions
 
-func commandExit(config *config) error {
+func commandExit(config *config, _ []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(config *config) error {
+func commandHelp(config *config, _ []string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -81,7 +86,7 @@ func commandHelp(config *config) error {
 	return nil
 }
 
-func commandMap(config *config) error {
+func commandMap(config *config, _ []string) error {
 	//Will fetch from the API then Println the name of 20 location areas
 	var apiURL string
 
@@ -109,7 +114,7 @@ func commandMap(config *config) error {
 	return nil
 }
 
-func commandMapb(config *config) error {
+func commandMapb(config *config, _ []string) error {
 	//(map back) a way to look at the previous 20 location areas, if there are any. If there are no previous location areas, it should print a message saying so.
 	if config.Previous == nil {
 		fmt.Println("No previous location areas to display.")
@@ -132,4 +137,31 @@ func commandMapb(config *config) error {
 	}
 
 	return nil
+}
+
+func commandExplore(config *config, parameters []string) error {
+	// Will take a location area name as a parameter, fetch data for pokemon found in that location area and print.
+	if len(parameters) == 0 {
+		return fmt.Errorf("Please provide a location area name to explore (hint: use map command to see location area names).")
+	} else if len(parameters) > 1 {
+		return fmt.Errorf("Please provide only one location area to explore.")
+	}
+
+	locationAreaName := parameters[0]
+
+	fmt.Println("Exploring " + locationAreaName + "...")
+
+	exploreResult, err := config.cache.FetchExploreItem("https://pokeapi.co/api/v2/location-area/" + locationAreaName)
+	if err != nil {
+		return fmt.Errorf("API request has given an error: %v", err)
+	}
+
+	fmt.Println("Found Pokemon:")
+	// Loop through and print the names of the pokemon found in the location area
+	for _, pokemon := range exploreResult.PokemonEncounters {
+		fmt.Println(" - " + pokemon.Pokemon.Name)
+	}
+
+	return nil
+
 }
