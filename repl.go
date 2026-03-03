@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 
@@ -20,6 +21,12 @@ type config struct {
 	Next     *string
 	Previous *string
 	cache    *internal.Cache
+	pokedex  *Pokedex
+}
+
+// Pokedex struct to store caught pokemon (Can be later expanded)
+type Pokedex struct {
+	Pokemon map[string]internal.Pokemon
 }
 
 var availableCommands map[string]cliCommand
@@ -49,8 +56,18 @@ func init() {
 		},
 		"explore": {
 			name:        "explore",
-			description: "Explore a location area by name, showing the pokemon that can be found there",
+			description: "Explore a location area by name, showing the pokemon that can be found there (Ex. explore eterna-forest-area)",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a pokemon by name (Ex. catch pikachu)",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect a pokemon by name (Ex. inspect pikachu)",
+			callback:    commandInspect,
 		},
 	}
 }
@@ -164,4 +181,70 @@ func commandExplore(config *config, parameters []string) error {
 
 	return nil
 
+}
+
+func commandCatch(config *config, parameters []string) error {
+	// Will take a pokemon name as a parameter, attempt to catch based on the base_experience and print the result
+	// The caught pokemon will be stored in a "pokedex" (Likely a map[string]Pokemon struct) that will be accessed by its own command
+
+	if len(parameters) == 0 {
+		return fmt.Errorf("Please provide a pokemon name to catch.")
+	} else if len(parameters) > 1 {
+		return fmt.Errorf("Please provide only one pokemon name to catch.")
+	}
+
+	// Catch probability based on base_experience (Higher base_experience means harder to catch, with a minimum 10% catch rate and a maximum 90% catch rate)
+	pokemonData, err := config.cache.FetchPokemon("https://pokeapi.co/api/v2/pokemon/" + parameters[0])
+	if err != nil {
+		return fmt.Errorf("Error reading pokemon endpoint: %v", err)
+	}
+	// Print to indicate clean API read and start of catch attempt
+	fmt.Println("Throwing a Pokeball at " + parameters[0] + "...")
+	catchProbability := 1 - (float64(pokemonData.BaseExperience) / 1000)
+	if catchProbability < 0.1 {
+		catchProbability = 0.1
+	} else if catchProbability > 0.9 {
+		catchProbability = 0.9
+	}
+
+	// Simulate a random catch attempt
+	if rand.Float64() < catchProbability {
+		fmt.Println(parameters[0] + " was caught!")
+		config.pokedex.Pokemon[parameters[0]] = pokemonData
+	} else {
+		fmt.Println(parameters[0] + " escaped!")
+	}
+
+	return nil
+}
+
+func commandInspect(config *config, parameters []string) error {
+	// Will take a pokemon name as a parameter and print it's info if it is in the pokedex (has been caught)
+	if len(parameters) == 0 {
+		return fmt.Errorf("Please provide a pokemon name to inspect.")
+	} else if len(parameters) > 1 {
+		return fmt.Errorf("Please provide only one pokemon name to inspect.")
+	}
+
+	pokemonName := parameters[0]
+	pokemon, exists := config.pokedex.Pokemon[pokemonName]
+	if !exists {
+		return fmt.Errorf("you have not caught that pokemon")
+	} else {
+		// Print all of the pokemon's info
+		fmt.Println("Name: " + pokemon.Name)
+		fmt.Printf("Height: %d\n", pokemon.Height)
+		fmt.Printf("Weight: %d\n", pokemon.Weight)
+		fmt.Println("Stats:")
+		// Loop through and print the stats and types of the pokemon (Not always multiple types)
+		for _, stat := range pokemon.Stats {
+			fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+		}
+		fmt.Println("Types:")
+		for _, t := range pokemon.Types {
+			fmt.Printf("  - %s\n", t.Type.Name)
+		}
+	}
+
+	return nil
 }

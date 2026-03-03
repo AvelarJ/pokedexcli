@@ -11,9 +11,14 @@ import (
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	pokedex := &Pokedex{
+		Pokemon: make(map[string]internal.Pokemon),
+	} // Empty initial pokedex
+
 	config := &config{
-		cache: internal.NewCache(5 * 60 * time.Second), // Cache with a 5-minute expiration interval
-	} //Start with empty config, will be updated by commands that need it
+		cache:   internal.NewCache(5 * 60 * time.Second), // Cache with a 5-minute expiration interval
+		pokedex: pokedex,                                 // Start with an empty pokedex
+	} // Start with empty config, will be updated by commands that need it
 
 	for {
 		fmt.Print("Pokedex > ")

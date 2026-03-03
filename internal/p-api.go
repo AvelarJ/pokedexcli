@@ -15,7 +15,6 @@ type LocationArea struct {
 	} `json:"results"`
 }
 
-// Might not need this struct
 type ExploreItem struct {
 	PokemonEncounters []struct {
 		Pokemon struct {
@@ -23,6 +22,25 @@ type ExploreItem struct {
 			Url  string `json:"url"`
 		} `json:"pokemon"`
 	} `json:"pokemon_encounters"`
+}
+
+// Pokemon struct holding all basic info (Could be expanded further if needed)
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Weight         int    `json:"weight"`
+	Stats          []struct {
+		BaseStat int `json:"base_stat"`
+		Stat     struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
+	Types []struct {
+		Type struct {
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
 }
 
 func (c *Cache) FetchLocationAreas(url string) (LocationArea, error) {
@@ -99,4 +117,39 @@ func (c *Cache) FetchExploreItem(url string) (ExploreItem, error) {
 	}
 
 	return exploreItem, nil
+}
+
+func (c *Cache) FetchPokemon(url string) (Pokemon, error) {
+	// Will fetch pokemon data similar to above method but on the pokemon endpoint, used for catch command.
+	var pokemon Pokemon
+
+	// Check cache first
+	if cachedData, found := c.Get(url); found {
+		err := json.Unmarshal(cachedData, &pokemon)
+		if err == nil {
+			return pokemon, nil
+		} else {
+			return Pokemon{}, err
+		}
+	} else {
+		// Make api get request because it wasn't found in cache
+		res, err := http.Get(url)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		defer res.Body.Close()
+
+		err = json.NewDecoder(res.Body).Decode(&pokemon)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		// Marshal the location area data and add it to the cache for future requests
+		data, err := json.Marshal(pokemon)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		c.Add(url, data)
+	}
+
+	return pokemon, nil
 }
