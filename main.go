@@ -11,16 +11,25 @@ import (
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-	pokedex := &Pokedex{
-		Pokemon: make(map[string]internal.Pokemon),
-	} // Empty initial pokedex
+
+	// Load pokedex from file if it exists
+	pokedex, err := loadPokedex()
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		if len(pokedex.Pokemon) > 0 { // Correctly loaded pokedex
+			fmt.Printf("Loaded pokedex with %d pokemon\n", len(pokedex.Pokemon))
+		} else { // Otherwise create empty pokedex
+			fmt.Println("Created new pokedex, let the adventure begin!")
+		}
+	}
 
 	config := &config{
 		cache:   internal.NewCache(5 * 60 * time.Second), // Cache with a 5-minute expiration interval
 		pokedex: pokedex,                                 // Start with an empty pokedex
 	} // Start with empty config, will be updated by commands that need it
 
-	for {
+	for { // Inf loop - run until exit command is called
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		input := scanner.Text()
@@ -31,7 +40,6 @@ func main() {
 		var parameters []string
 		if len(cleanInput) > 1 {
 			parameters = cleanInput[1:]
-			//fmt.Println("Parameters passed to command:", parameters)
 		} else {
 			parameters = []string{}
 		}

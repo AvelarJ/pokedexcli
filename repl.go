@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -36,7 +37,7 @@ func init() {
 	availableCommands = map[string]cliCommand{
 		"exit": {
 			name:        "exit",
-			description: "Exit the Pokedex",
+			description: "Save the current state of the Pokedex and exit",
 			callback:    commandExit,
 		},
 		"help": {
@@ -69,6 +70,32 @@ func init() {
 			description: "Inspect a pokemon by name (Ex. inspect pikachu)",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "List all pokemon saved in the pokedex",
+			callback:    commandPokedex,
+		},
+	}
+}
+
+func loadPokedex() (*Pokedex, error) {
+	// Load pokedex data from file if it exists, otherwise return an empty pokedex
+
+	data, err := os.ReadFile("pokedex.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &Pokedex{Pokemon: make(map[string]internal.Pokemon)}, nil
+		} else { // Any other error should be returned (Also an empty pokedex)
+			return &Pokedex{Pokemon: make(map[string]internal.Pokemon)}, fmt.Errorf("Error opening pokedex.json: %v", err)
+		}
+	} else {
+		var pokedex *Pokedex
+
+		err := json.Unmarshal(data, &pokedex)
+		if err != nil { // Returns error and still an empty pokedex
+			return &Pokedex{Pokemon: make(map[string]internal.Pokemon)}, fmt.Errorf("Error Unmarshalling pokedex.json: %v", err)
+		}
+		return pokedex, nil
 	}
 }
 
@@ -87,7 +114,18 @@ func cleanInput(text string) []string {
 // Command functions
 
 func commandExit(config *config, _ []string) error {
-	fmt.Println("Closing the Pokedex... Goodbye!")
+	// Marshal the pokedex data and save it to a file before exiting
+
+	data, err := json.Marshal(config.pokedex)
+	if err != nil {
+		return fmt.Errorf("error saving pokedex: %v", err)
+	}
+	err = os.WriteFile("pokedex.json", data, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing pokedex file: %v", err)
+	}
+
+	fmt.Println("Pokedex saved. Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
@@ -105,6 +143,7 @@ func commandHelp(config *config, _ []string) error {
 
 func commandMap(config *config, _ []string) error {
 	//Will fetch from the API then Println the name of 20 location areas
+
 	var apiURL string
 
 	if config.Previous == nil && config.Next == nil {
@@ -133,6 +172,7 @@ func commandMap(config *config, _ []string) error {
 
 func commandMapb(config *config, _ []string) error {
 	//(map back) a way to look at the previous 20 location areas, if there are any. If there are no previous location areas, it should print a message saying so.
+
 	if config.Previous == nil {
 		fmt.Println("No previous location areas to display.")
 		return nil
@@ -158,6 +198,7 @@ func commandMapb(config *config, _ []string) error {
 
 func commandExplore(config *config, parameters []string) error {
 	// Will take a location area name as a parameter, fetch data for pokemon found in that location area and print.
+
 	if len(parameters) == 0 {
 		return fmt.Errorf("Please provide a location area name to explore (hint: use map command to see location area names).")
 	} else if len(parameters) > 1 {
@@ -200,17 +241,16 @@ func commandCatch(config *config, parameters []string) error {
 	}
 	// Print to indicate clean API read and start of catch attempt
 	fmt.Println("Throwing a Pokeball at " + parameters[0] + "...")
-	catchProbability := 1 - (float64(pokemonData.BaseExperience) / 1000)
-	if catchProbability < 0.1 {
-		catchProbability = 0.1
-	} else if catchProbability > 0.9 {
-		catchProbability = 0.9
-	}
 
-	// Simulate a random catch attempt
+	// Catch probability: higher BaseExperience = harder to catch, scaled to 0.1–0.9
+	const minExp, maxExp = 36.0, 608.0
+	normalized := (float64(pokemonData.BaseExperience) - minExp) / (maxExp - minExp)
+	catchProbability := 0.9 - normalized*0.8
+
 	if rand.Float64() < catchProbability {
 		fmt.Println(parameters[0] + " was caught!")
 		config.pokedex.Pokemon[parameters[0]] = pokemonData
+		fmt.Println("You may now inspect it with the inspect command.")
 	} else {
 		fmt.Println(parameters[0] + " escaped!")
 	}
@@ -220,6 +260,7 @@ func commandCatch(config *config, parameters []string) error {
 
 func commandInspect(config *config, parameters []string) error {
 	// Will take a pokemon name as a parameter and print it's info if it is in the pokedex (has been caught)
+
 	if len(parameters) == 0 {
 		return fmt.Errorf("Please provide a pokemon name to inspect.")
 	} else if len(parameters) > 1 {
@@ -244,6 +285,17 @@ func commandInspect(config *config, parameters []string) error {
 		for _, t := range pokemon.Types {
 			fmt.Printf("  - %s\n", t.Type.Name)
 		}
+	}
+
+	return nil
+}
+
+func commandPokedex(config *config, _ []string) error {
+	// Will print the names of all the pokemon in the pokedex (pokemon that have been caught)
+
+	fmt.Println("Your pokedex:")
+	for name := range config.pokedex.Pokemon {
+		fmt.Println(" - " + name)
 	}
 
 	return nil
